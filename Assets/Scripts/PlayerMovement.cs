@@ -16,6 +16,9 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] 
     [Tooltip("Rate at which player's downward velocity changes every FixedUpdate. Enter a positive float")]
     private float gravityAcceleration;
+    
+    [SerializeField]
+    private float _jumpAcceleration;
     #endregion
     
     
@@ -30,6 +33,11 @@ public class PlayerMovement : MonoBehaviour
     {
         _rb = GetComponent<Rigidbody2D>();
         _playerHeight = GetComponent<SpriteRenderer>().bounds.size.y;
+    }
+
+    private void Start()
+    {
+        EventBus.Subscribe("PerformJump", PerformJump);
     }
     
     private void Update()
@@ -61,5 +69,11 @@ public class PlayerMovement : MonoBehaviour
         
         // Kinematic rigidbodies don't collide, so we manually stop them just above the ground. 
         if (_isGrounded && _rb.linearVelocity.y < 0) _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, 0); 
+    }
+
+    private void PerformJump()
+    {
+        if (!_isGrounded) return;
+        _rb.linearVelocity +=  new Vector2(0, _jumpAcceleration);
     }
 }

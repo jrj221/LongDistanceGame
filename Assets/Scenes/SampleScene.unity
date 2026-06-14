@@ -509,6 +509,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::InputManager
   _actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   _move: {fileID: -143140272971075690, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
+  _jump: {fileID: 8842052206458946361, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
 --- !u!4 &1646506641
 Transform:
   m_ObjectHideFlags: 0
@@ -707,6 +708,7 @@ MonoBehaviour:
   accelerationPortion: 0.25
   _raycastDist: 0.01
   gravityAcceleration: 9.8
+  _jumpAcceleration: 6
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
