@@ -3,6 +3,7 @@ using UnityEngine;
 public class PlayerMovement : MonoBehaviour
 {
     [SerializeField] private float speed;
+    [SerializeField] private float accelerationPortion; // What portion of your velocityGap will you overcome this frame?
     [SerializeField] private Rigidbody2D rb;
     
     private bool _isGrounded;
@@ -18,31 +19,22 @@ public class PlayerMovement : MonoBehaviour
     {
         MovePlayer();
         ApplyGravity();
-        // ClampSpeed();
     }
 
     private void MovePlayer()
     {
-        float moveInput = InputManager.Instance.InputMoveDirection;
-        bool pressingLeft = moveInput < 0;
-        bool pressingRight = moveInput > 0;
-        // if (pressingLeft) rb.AddForce(Vector2.left * speed);
-        // if (pressingRight) rb.AddForce(Vector2.right * speed);
-        float yVelo =  rb.linearVelocity.y;
-        rb.linearVelocity = speed * moveInput * Vector3.right + new Vector3(0, yVelo, 0);
-    }
-
-    private void ClampSpeed()
-    {
-        if (rb.linearVelocity.magnitude > speed) rb.linearVelocity = speed * rb.linearVelocity.normalized;
+        // Difference between desired and current velocity
+        float velocityGap = (InputManager.Instance.InputMoveDirection * speed) - rb.linearVelocity.x; 
+        // When you are farther from your desired velocity, accelerate towards it quicker, allowing for smoother turns
+        rb.linearVelocity += new Vector2(velocityGap * accelerationPortion, 0);
     }
 
     private void ApplyGravity()
     {
-        Vector2 currVelocity = rb.linearVelocity;
-        rb.linearVelocity = currVelocity + new Vector2(0, -9.8f * Time.deltaTime);
+        // Custom gravity
+        rb.linearVelocity += new Vector2(0, -9.8f * Time.deltaTime);
         
+        // Kinematic rigidbodies don't collide, so we manually stop them just above the ground. 
         if (_isGrounded && rb.linearVelocity.y < 0) rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); 
-        // rb.MovePosition(transform.position + new Vector3(0, -0.1f, 0));
     }
 }

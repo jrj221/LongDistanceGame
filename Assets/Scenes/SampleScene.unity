@@ -552,7 +552,7 @@ Rigidbody2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2026614760}
-  m_BodyType: 0
+  m_BodyType: 1
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
@@ -703,7 +703,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0d31e9ba0a0f3430ca2120371e8ea852, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
-  speed: 5
+  speed: 7
+  accelerationPortion: 0.25
   rb: {fileID: 2026614761}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
