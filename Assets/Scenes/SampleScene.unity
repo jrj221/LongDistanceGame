@@ -709,6 +709,7 @@ MonoBehaviour:
   _raycastDist: 0.01
   gravityAcceleration: 9.8
   _jumpAcceleration: 6
+  _jumpBufferLength: 0.2
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

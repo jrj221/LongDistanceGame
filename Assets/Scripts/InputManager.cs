@@ -34,6 +34,6 @@ public class InputManager : MonoBehaviour
 
     private void PerformJump(InputAction.CallbackContext ctx)
     {
-        EventBus.Trigger("PerformJump");
+        EventBus.Trigger(GameEvents.BufferJump);
     }
 }

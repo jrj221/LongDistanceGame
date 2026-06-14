@@ -19,12 +19,18 @@ public class PlayerMovement : MonoBehaviour
     
     [SerializeField]
     private float _jumpAcceleration;
+
+    [SerializeField] 
+    [Tooltip("The length of time for which a jump is buffered after pressing the key?")]
+    private float _jumpBufferLength;
     #endregion
     
     
     #region Class Fields
     private Rigidbody2D _rb;
     private bool _isGrounded;
+    private bool _jumpBuffered;
+    private float _jumpBufferTime;
     private float _playerHeight;
     #endregion
 
@@ -37,7 +43,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void Start()
     {
-        EventBus.Subscribe("PerformJump", PerformJump);
+        EventBus.Subscribe(GameEvents.BufferJump, BufferJump);
     }
     
     private void Update()
@@ -46,11 +52,22 @@ public class PlayerMovement : MonoBehaviour
         var feetPosition = new Vector2 (transform.position.x, transform.position.y - _playerHeight/2 - _raycastDist);
         _isGrounded = Physics2D.Raycast(feetPosition, Vector3.down, _raycastDist);
         Debug.DrawRay(feetPosition, Vector3.down * _raycastDist, Color.red);
+        
+        ApplyCooldowns();
+    }
+
+    private void ApplyCooldowns()
+    {
+        // TODO: Make this more elegant later on when you have more cooldowns
+        _jumpBufferTime -= Time.deltaTime;
+        
+        _jumpBuffered = _jumpBufferTime > 0;
     }
 
     private void FixedUpdate()
     {
         MovePlayer();
+        if  (_isGrounded && _jumpBuffered) PerformJump();
         ApplyGravity();
     }
 
@@ -71,9 +88,15 @@ public class PlayerMovement : MonoBehaviour
         if (_isGrounded && _rb.linearVelocity.y < 0) _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, 0); 
     }
 
+    private void BufferJump()
+    {
+        _jumpBufferTime = _jumpBufferLength;
+    }
+
     private void PerformJump()
     {
-        if (!_isGrounded) return;
-        _rb.linearVelocity +=  new Vector2(0, _jumpAcceleration);
+        _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, 0); // Zero out current velocity
+        _rb.linearVelocity +=  new Vector2(0, _jumpAcceleration); // Apply jump
+        _jumpBufferTime = 0; // Reset buffer
     }
 }

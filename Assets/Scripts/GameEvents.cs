@@ -1,16 +1,5 @@
-using UnityEngine;
-
-public class GameEvents : MonoBehaviour
+public static class GameEvents
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    // A centralized list of valid eventName strings
+    public const string BufferJump = "BufferJump";
 }
