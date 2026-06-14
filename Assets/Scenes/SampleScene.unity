@@ -705,7 +705,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
   speed: 7
   accelerationPortion: 0.25
-  rb: {fileID: 2026614761}
+  _raycastDist: 0.01
+  gravityAcceleration: 9.8
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
