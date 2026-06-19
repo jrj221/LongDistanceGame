@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -6,9 +7,14 @@ public class InputManager : MonoBehaviour
     [SerializeField] private InputActionAsset _actions;
     [SerializeField] private InputActionReference _move;
     [SerializeField] private InputActionReference _jump;
-    
+    [SerializeField] private InputActionReference _run;
+
     public static InputManager Instance { get; private set; }
-    public float InputMoveDirection {get; private set;}
+    public bool RunIsHeld { get; private set; }
+    public bool JumpWasPressed { get; private set; }
+    public bool JumpIsHeld { get; private set; }
+    public bool JumpWasReleased { get; private set; }
+    public float InputMoveDirection { get; private set; }
 
     private void Awake()
     {
@@ -18,22 +24,23 @@ public class InputManager : MonoBehaviour
     private void Update()
     {
         InputMoveDirection = _move.action.ReadValue<float>();
+
+        JumpWasPressed = _jump.action.WasPressedThisFrame();
+        JumpIsHeld = _jump.action.IsPressed();
+        JumpWasReleased = _jump.action.WasReleasedThisFrame();
+
+        RunIsHeld = _run.action.IsPressed();
     }
 
     private void OnEnable()
     {
         _actions.Enable();
-        _jump.action.started += PerformJump;
     }
 
     private void OnDisable()
     {
         _actions.Disable();
-        _jump.action.started -= PerformJump;
     }
 
-    private void PerformJump(InputAction.CallbackContext ctx)
-    {
-        EventBus.Trigger(GameEvents.BufferJump);
-    }
+
 }
