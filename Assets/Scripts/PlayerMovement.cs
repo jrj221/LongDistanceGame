@@ -6,23 +6,22 @@ public class PlayerMovement : MonoBehaviour
 {
     [Header("References")]
     public PlayerMovementStats MoveStats;
-    [SerializeField] private Collider2D _feetColl;
-    [SerializeField] private Collider2D _bodyColl;
+    [SerializeField] private Collider2D _collider;
 
     private Rigidbody2D _rb;
 
     // Movement vars
-    private Vector2 _moveVelocity;
-    private bool _isFacingRight;
+    public bool IsFacingRight { get; private set; }
+    public MovementController Controller;
+    [HideInInspector] public Vector2 Velocity;
 
-    // Collision check vars
-    private RaycastHit2D _groundHit;
-    private RaycastHit2D _headHit;
-    private bool _isGrounded;
-    private bool _bumpedHead;
+    //input
+    private float _moveInput;
+    private bool _runHeld;
+    private bool _jumpPressed;
+    private bool _jumpReleased;
 
     // Jump vars
-    public float VerticalVelocity { get; private set; }
     private bool _isJumping;
     private bool _isFastFalling;
     private bool _isFalling;
@@ -44,66 +43,74 @@ public class PlayerMovement : MonoBehaviour
 
     private void Awake()
     {
-        _isFacingRight = true;
-
+        IsFacingRight = true;
         _rb = GetComponent<Rigidbody2D>();
+        Controller = GetComponent<MovementController>();
     }
 
     private void Update()
     {
-        JumpChecks();
-        CountTimers();
+        _moveInput = InputManager.Instance.InputMoveDirection;
+        _runHeld = InputManager.Instance.RunIsHeld;
+        if (InputManager.Instance.JumpWasPressed) _jumpPressed = true;
+        if (InputManager.Instance.JumpWasReleased) _jumpReleased = true;
+
     }
 
     private void FixedUpdate()
     {
-        CollisionChecks();
-        Jump();
+        CountTimers(Time.fixedDeltaTime);
+        JumpChecks();
+        HandleHorizontalMovement(Time.fixedDeltaTime);
 
-        if (_isGrounded)
-        {
-            Move(MoveStats.GroundAcceleration, MoveStats.GroundDeceleration, InputManager.Instance.InputMoveDirection);
-        }
-        else
-        {
-            Move(MoveStats.AirAcceleration, MoveStats.AirDeceleration, InputManager.Instance.InputMoveDirection);
-        }
+        Jump(Time.fixedDeltaTime);
+
+        ClampVelocity();
+
+        Controller.Move(Velocity * Time.fixedDeltaTime);
+
+        // Reset inputs
+        _jumpPressed = false;
+        _jumpReleased = false;
+    }
+
+    private void ClampVelocity()
+    {
+        // Clamp Fall Speed
+        Velocity.y = Mathf.Clamp(Velocity.y, -MoveStats.MaxFallSpeed, 50f);
     }
 
     #region Movement
 
-    private void Move(float acceleration, float deceleration, float moveInput)
+    private void HandleHorizontalMovement(float timeStep)
     {
-        if (moveInput != 0)
+        TurnCheck(_moveInput);
+        float targetVelocityX = 0f;
+
+        float moveDirection = Mathf.Sign(_moveInput);
+        targetVelocityX = _runHeld ? moveDirection * MoveStats.MaxRunSpeed : moveDirection * MoveStats.MaxWalkSpeed;
+
+        float acceleration = Controller.IsGrounded() ? MoveStats.GroundAcceleration : MoveStats.AirAcceleration;
+        float deceleration = Controller.IsGrounded() ? MoveStats.GroundDeceleration : MoveStats.AirDeceleration;
+
+        if (_moveInput != 0)
         {
-            TurnCheck(moveInput);
-
-            Vector2 targetVelocity = Vector2.zero;
-            if (InputManager.Instance.RunIsHeld)
-            {
-                targetVelocity = new Vector2(moveInput, 0f) * MoveStats.MaxRunSpeed;
-            }
-            else { targetVelocity = new Vector2(moveInput, 0f) * MoveStats.MaxWalkSpeed; }
-
-            _moveVelocity = Vector2.Lerp(_moveVelocity, targetVelocity, acceleration * Time.fixedDeltaTime);
-            _rb.linearVelocity = new Vector2(_moveVelocity.x, _rb.linearVelocity.y);
+            Velocity.x = Mathf.Lerp(Velocity.x, targetVelocityX, acceleration * timeStep);
         }
-
-        else if (moveInput == 0)
+        else
         {
-            _moveVelocity = Vector2.Lerp(_moveVelocity, Vector2.zero, deceleration * Time.fixedDeltaTime);
-            _rb.linearVelocity = new Vector2(_moveVelocity.x, _rb.linearVelocity.y);
+            Velocity.x = Mathf.Lerp(Velocity.x, 0, deceleration * timeStep);
         }
     }
 
     private void TurnCheck(float moveInput)
     {
-        if (_isFacingRight && moveInput < 0)
+        if (IsFacingRight && moveInput < 0)
         {
             Turn(false);
         }
 
-        else if (!_isFacingRight && moveInput > 0)
+        else if (!IsFacingRight && moveInput > 0)
         {
             Turn(true);
         }
@@ -113,12 +120,12 @@ public class PlayerMovement : MonoBehaviour
     {
         if (turnRight)
         {
-            _isFacingRight = true;
+            IsFacingRight = true;
             // transform.Rotate(0f, 100f, 0f);
         }
         else
         {
-            _isFacingRight = false;
+            IsFacingRight = false;
             // transform.Rotate(0f, -100f, 0f);
         }
     }
@@ -130,7 +137,7 @@ public class PlayerMovement : MonoBehaviour
     private void JumpChecks()
     {
         // When we press the button
-        if (InputManager.Instance.JumpWasPressed)
+        if (_jumpPressed)
         {
             _jumpBufferTimer = MoveStats.JumpBufferTime;
             _jumpReleasedDuringBuffer = false;
@@ -144,32 +151,32 @@ public class PlayerMovement : MonoBehaviour
                 _jumpReleasedDuringBuffer = true;
             }
 
-            if (_isJumping && VerticalVelocity > 0f)
+            if (_isJumping && Velocity.y > 0f)
             {
                 if (_isPastApexThreshold)
                 {
                     _isPastApexThreshold = false;
                     _isFastFalling = true;
                     _fastFallTime = MoveStats.TimeForUpwardsCancel;
-                    VerticalVelocity = 0f; // To prevent feeling floaty
+                    Velocity.y = 0f; // To prevent feeling floaty
                 }
                 else
                 {
                     _isFastFalling = true;
-                    _fastFallReleaseSpeed = VerticalVelocity;
+                    _fastFallReleaseSpeed = Velocity.y;
                 }
             }
         }
 
         // intiiate jump wit buffering and coyoto
-        if (_jumpBufferTimer > 0f && !_isJumping && (_isGrounded || _coyoteTimer > 0f))
+        if (_jumpBufferTimer > 0f && !_isJumping && (Controller.IsGrounded() || _coyoteTimer > 0f))
         {
             InitiateJump(1);
 
             if (_jumpReleasedDuringBuffer) // So they just do a bunny hop when hitting the ground if they tapped the jump key
             {
                 _isFastFalling = true;
-                _fastFallReleaseSpeed = VerticalVelocity;
+                _fastFallReleaseSpeed = Velocity.y;
             }
         }
 
@@ -180,7 +187,7 @@ public class PlayerMovement : MonoBehaviour
             InitiateJump(1);
         }
 
-        // air jump after coyotoe time lapsed
+        // air jump after coyotoe time lapsed 
         else if (_jumpBufferTimer > 0f && _isFalling && _numberOfJumpsUsed < MoveStats.NumberOfJumpsAllowed - 1) // AIR jump
         {
             InitiateJump(2);
@@ -188,7 +195,7 @@ public class PlayerMovement : MonoBehaviour
         }
 
         // landed 
-        if ((_isJumping || _isFalling) && _isGrounded && VerticalVelocity <= 0f)
+        if ((_isJumping || _isFalling) && Controller.IsGrounded() && Velocity.y <= 0f)
         {
             _isJumping = false;
             _isFalling = false;
@@ -197,7 +204,7 @@ public class PlayerMovement : MonoBehaviour
             _isPastApexThreshold = false;
             _numberOfJumpsUsed = 0;
 
-            VerticalVelocity = Physics2D.gravity.y;
+            Velocity.y = Physics2D.gravity.y;
         }
     }
 
@@ -210,25 +217,25 @@ public class PlayerMovement : MonoBehaviour
 
         _jumpBufferTimer = 0f;
         _numberOfJumpsUsed += numberOfJumpsUsed;
-        VerticalVelocity = MoveStats.InitialJumpVelocity;
+        Velocity.y = MoveStats.InitialJumpVelocity;
     }
 
-    private void Jump()
+    private void Jump(float timeStep)
     {
         // apply gravity while jumping
         if (_isJumping)
         {
             // check fo rhead bump
-            if (_bumpedHead)
+            if (Controller.BumpedHead())
             {
                 _isFastFalling = true;
             }
 
             // gravity on ascending
-            if (VerticalVelocity >= 0f)
+            if (Velocity.y >= 0f)
             {
                 // handle apex controlls
-                _apexPoint = Mathf.InverseLerp(MoveStats.InitialJumpVelocity, 0f, VerticalVelocity);
+                _apexPoint = Mathf.InverseLerp(MoveStats.InitialJumpVelocity, 0f, Velocity.y);
 
                 if (_apexPoint > MoveStats.ApexThreshold)
                 {
@@ -240,21 +247,21 @@ public class PlayerMovement : MonoBehaviour
 
                     if (_isPastApexThreshold)
                     {
-                        _timePastApexThreshold += Time.fixedDeltaTime;
+                        _timePastApexThreshold += timeStep;
                         if (_timePastApexThreshold < MoveStats.ApexHangTime)
                         {
-                            VerticalVelocity = 0f;
+                            Velocity.y = 0f;
                         }
                         else
                         {
-                            VerticalVelocity = -0.01f;
+                            Velocity.y = -0.01f;
                         }
                     }
                 }
                 // gravity on ascending but not past apex threshold
                 else
                 {
-                    VerticalVelocity += MoveStats.Gravity * Time.fixedDeltaTime;
+                    Velocity.y += MoveStats.Gravity * timeStep;
                     if (_isPastApexThreshold)
                     {
                         _isPastApexThreshold = false;
@@ -265,10 +272,10 @@ public class PlayerMovement : MonoBehaviour
             // gravity on descending
             else if (!_isFastFalling)
             {
-                VerticalVelocity += MoveStats.Gravity * MoveStats.GravityOnReleaseMultiplier * Time.fixedDeltaTime;
+                Velocity.y += MoveStats.Gravity * MoveStats.GravityOnReleaseMultiplier * timeStep;
             }
 
-            else if (VerticalVelocity < 0f)
+            else if (Velocity.y < 0f)
             {
                 if (!_isFalling)
                 {
@@ -283,79 +290,39 @@ public class PlayerMovement : MonoBehaviour
         {
             if (_fastFallTime >= MoveStats.TimeForUpwardsCancel)
             {
-                VerticalVelocity += MoveStats.Gravity * MoveStats.GravityOnReleaseMultiplier * Time.fixedDeltaTime;
+                Velocity.y += MoveStats.Gravity * MoveStats.GravityOnReleaseMultiplier * timeStep;
             }
             else if (_fastFallTime < MoveStats.TimeForUpwardsCancel)
             {
-                VerticalVelocity = Mathf.Lerp(_fastFallReleaseSpeed, 0f, (_fastFallTime / MoveStats.TimeForUpwardsCancel));
+                Velocity.y = Mathf.Lerp(_fastFallReleaseSpeed, 0f, (_fastFallTime / MoveStats.TimeForUpwardsCancel));
             }
 
-            _fastFallTime += Time.fixedDeltaTime;
+            _fastFallTime += timeStep;
         }
 
         // normal gravity while falling
-        if (!_isGrounded && !_isJumping)
+        if (!Controller.IsGrounded() && !_isJumping)
         {
             if (!_isFalling)
             {
                 _isFalling = true;
             }
 
-            VerticalVelocity += MoveStats.Gravity * Time.fixedDeltaTime;
+            Velocity.y += MoveStats.Gravity * timeStep;
         }
-
-        // clamp fall speed
-        VerticalVelocity = Mathf.Clamp(VerticalVelocity, -MoveStats.MaxFallSpeed, 50f); // arbitrary max
-
-        _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, VerticalVelocity);
-    }
-
-    #endregion
-
-    #region Collision Checks
-
-    private void IsGrounded()
-    {
-        Vector2 boxCastOrigin = new(_feetColl.bounds.center.x, _feetColl.bounds.min.y);
-        Vector2 boxCastSize = new(_feetColl.bounds.size.x, MoveStats.GroundDetectionRayLength);
-
-        _groundHit = Physics2D.BoxCast(boxCastOrigin, boxCastSize, 0f, Vector2.down, MoveStats.GroundDetectionRayLength, MoveStats.GroundLayer);
-        if (_groundHit.collider != null)
-        {
-            _isGrounded = true;
-        }
-        else { _isGrounded = false; }
-    }
-
-    private void BumpedHead()
-    {
-        Vector2 boxCastOrigin = new(_feetColl.bounds.center.x, _feetColl.bounds.max.y);
-        Vector2 boxCastSize = new(_feetColl.bounds.size.x * MoveStats.HeadWidth, MoveStats.HeadDetectionRayLength);
-
-        _headHit = Physics2D.BoxCast(boxCastOrigin, boxCastSize, 0f, Vector2.up, MoveStats.HeadDetectionRayLength, MoveStats.GroundLayer);
-        if (_headHit.collider != null)
-        {
-            _bumpedHead = true;
-        }
-        else { _bumpedHead = false; }
-    }
-
-    private void CollisionChecks()
-    {
-        IsGrounded();
     }
 
     #endregion
 
     #region Timers
 
-    private void CountTimers()
+    private void CountTimers(float timeStep)
     {
-        _jumpBufferTimer -= Time.deltaTime;
+        _jumpBufferTimer -= timeStep;
 
-        if (!_isGrounded)
+        if (!Controller.IsGrounded())
         {
-            _coyoteTimer -= Time.deltaTime;
+            _coyoteTimer -= timeStep;
         }
         else { _coyoteTimer = MoveStats.JumpCoyoteTime; }
     }

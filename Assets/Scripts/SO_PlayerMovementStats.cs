@@ -16,10 +16,6 @@ public class PlayerMovementStats : ScriptableObject
 
     [Header("Grounded/Collision Checks")]
     public LayerMask GroundLayer;
-    public float GroundDetectionRayLength = .02f;
-    public float HeadDetectionRayLength = 0.02f;
-    [Range(0f, 1f)] public float HeadWidth = 0.75f;
-
 
     [Header("Jump")]
     public float JumpHeight = 6.5f;
@@ -46,6 +42,7 @@ public class PlayerMovementStats : ScriptableObject
     public bool DebugShowIsGrounded;
     public bool DebugShowHeadRays;
     public bool DebugShowWallHit;
+    [Range(0f, 1f)] public float ExtraRayDebugDistance = 0.25f;
 
 
     public float Gravity { get; private set; }
