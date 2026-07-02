@@ -1,6 +1,4 @@
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.SocialPlatforms.GameCenter;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -54,7 +52,6 @@ public class PlayerMovement : MonoBehaviour
         _runHeld = InputManager.Instance.RunIsHeld;
         if (InputManager.Instance.JumpWasPressed) _jumpPressed = true;
         if (InputManager.Instance.JumpWasReleased) _jumpReleased = true;
-
     }
 
     private void FixedUpdate()
